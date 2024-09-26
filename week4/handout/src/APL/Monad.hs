@@ -56,27 +56,40 @@ data Free e a
   | Free (e (Free e a))
 
 instance (Functor e) => Functor (Free e) where
-  fmap f (Pure x) = error "TODO"
-  fmap f (Free g) = error "TODO"
+  fmap f (Pure x) = Pure $ f x
+  fmap f (Free g) = Free $ fmap (fmap f) g
 
 instance (Functor e) => Applicative (Free e) where
   pure = Pure
   (<*>) = ap
 
 instance (Functor e) => Monad (Free e) where
-  Pure x >>= f = error "TODO"
-  Free g >>= f = error "TODO"
+  Pure x >>= f = f x
+  Free g >>= f = Free $ h <$> g
+    where
+      h x = x >>= f
 
+-- APL.Monad:
 data EvalOp a
   = ReadOp (Env -> a)
+  | StateGetOp (State -> a)
+  | StatePutOp State a
 
 instance Functor EvalOp where
-  fmap f (ReadOp k) = error "TODO"
+  fmap f (ReadOp k) = ReadOp $ f . k
+  fmap f (StateGetOp g) = StateGetOp $ f . g
+  fmap f (StatePutOp s x) = StatePutOp s $ f x
 
 type EvalM a = Free EvalOp a
 
 askEnv :: EvalM Env
 askEnv = Free $ ReadOp $ \env -> pure env
+
+getState :: EvalM State
+getState = Free $ StateGetOp $ \st -> pure st
+
+putState :: EvalM a
+putState = Free $ StatePutOp 
 
 modifyEffects :: (Functor e, Functor h) => (e (Free e a) -> h (Free e a)) -> Free e a -> Free h a
 modifyEffects _ (Pure x) = Pure x
