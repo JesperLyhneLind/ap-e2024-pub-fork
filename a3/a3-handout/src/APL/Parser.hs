@@ -76,9 +76,13 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
+-- Helper function for left associative
 leftAssoc :: Exp -> [Exp] -> Exp
 leftAssoc f [] = f
 leftAssoc f (f':fs) = leftAssoc (Apply f f') fs
+
+-- Helper function for left associative
+
 
 pFExp :: Parser Exp
 pFExp = do
@@ -104,6 +108,10 @@ pExp1 = pLExp >>= chain
     chain x =
       choice
         [ do
+            lString "**"
+            y <- many pLExp
+            chain $ Pow x y,
+          do
             lString "*"
             y <- pLExp
             chain $ Mul x y,
@@ -127,6 +135,10 @@ pExp0 = pExp1 >>= chain
             lString "-"
             y <- pExp1
             chain $ Sub x y,
+          do
+            lString "=="
+            y <- pExp1
+            chain $ Eql x y,
           pure x
         ]
 
