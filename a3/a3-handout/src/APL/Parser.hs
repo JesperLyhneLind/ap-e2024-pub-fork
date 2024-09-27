@@ -76,10 +76,15 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
--- pFExp :: Parser Exp
--- pFExp = do
---   func <- pAtom     
---   args <- many pAtom
+leftAssoc :: Exp -> [Exp] -> Exp
+leftAssoc f [] = f
+leftAssoc f (f':fs) = leftAssoc (Apply f f') fs
+
+pFExp :: Parser Exp
+pFExp = do
+  func <- pAtom     
+  args <- many pAtom
+  pure $ leftAssoc func args
 
 
 pLExp :: Parser Exp
@@ -89,8 +94,8 @@ pLExp =
         <$> (lKeyword "if" *> pExp)
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
-      pAtom
-      -- pFExp
+      -- pAtom
+      pFExp
     ]
 
 pExp1 :: Parser Exp
