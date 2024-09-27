@@ -66,6 +66,7 @@ lBool =
       const False <$> lKeyword "false"
     ]
 
+
 pAtom :: Parser Exp
 pAtom =
   choice
@@ -75,6 +76,12 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
+-- pFExp :: Parser Exp
+-- pFExp = do
+--   func <- pAtom     
+--   args <- many pAtom
+
+
 pLExp :: Parser Exp
 pLExp =
   choice
@@ -83,6 +90,7 @@ pLExp =
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
       pAtom
+      -- pFExp
     ]
 
 pExp1 :: Parser Exp
