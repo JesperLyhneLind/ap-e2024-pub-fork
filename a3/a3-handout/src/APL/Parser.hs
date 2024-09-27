@@ -99,6 +99,9 @@ pLExp =
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
       -- pAtom
+      Lambda <$> (lString "\\" *> lVName <* lString "->") <*> pExp,
+      Let <$> (lKeyword "let" *> lVName) <*> (lString "=" *> pExp) <*> (lKeyword "in" *> pExp),
+      TryCatch <$> (lKeyword "try" *> pExp) <*> (lKeyword "catch" *> pExp),
       pFExp
     ]
 
@@ -107,10 +110,11 @@ pExp1 = pLExp >>= chain
   where
     chain x =
       choice
-        [ do
+          [do
             lString "**"
-            y <- many pLExp
+            y <- pExp1
             chain $ Pow x y,
+          pure x,
           do
             lString "*"
             y <- pLExp
