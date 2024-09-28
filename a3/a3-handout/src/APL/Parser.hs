@@ -109,7 +109,7 @@ pExp1 = pLExp >>= chain
       choice
         [ do
             lString "**"
-            y <- many pLExp
+            y <- pLExp
             chain $ Pow x y,
           do
             lString "*"
