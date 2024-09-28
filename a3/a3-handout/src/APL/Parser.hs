@@ -106,19 +106,6 @@ pKExp =
       pAtom
     ]
     
--- Added ML
-pHExp :: Parser Exp
-pHExp = pKExp >>= chain
-  where
-    chain x = 
-      choice
-        [ do
-            lString "**"
-            y <- pHExp
-            chain $ Pow x y,
-          pure x  
-        ]
-
 -- pFExp :: Parser Exp
 -- pFExp = do
 --   func <- pAtom     
@@ -127,13 +114,13 @@ pHExp = pKExp >>= chain
 
 -- Added ML
 pFExp :: Parser Exp
-pFExp = pHExp >>= chain
+pFExp = pKExp >>= chain
   where
     chain x =
       choice
         [ do
             space
-            y <- pHExp
+            y <- pKExp
             chain $ Apply x y,
           pure x
         ]
@@ -154,8 +141,21 @@ pLExp =
       pFExp
     ]
 
+-- Added ML
+pHExp :: Parser Exp
+pHExp = pLExp >>= chain
+  where
+    chain x = 
+      choice
+        [ do
+            lString "**"
+            y <- pHExp
+            chain $ Pow x y,
+          pure x  
+        ]
+
 pExp1 :: Parser Exp
-pExp1 = pLExp >>= chain
+pExp1 = pHExp >>= chain
   where
     chain x =
       choice
@@ -165,11 +165,11 @@ pExp1 = pLExp >>= chain
         --     chain $ Pow x y,
         [ do
             lString "*"
-            y <- pLExp
+            y <- pHExp
             chain $ Mul x y,
           do
             lString "/"
-            y <- pLExp
+            y <- pHExp
             chain $ Div x y,
           pure x
         ]
