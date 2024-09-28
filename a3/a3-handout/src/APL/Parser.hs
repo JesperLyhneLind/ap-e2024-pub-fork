@@ -49,6 +49,10 @@ lVName = lexeme $ try $ do
     then fail "Unexpected keyword"
     else pure v
 
+-- Added ML
+lPrint :: Parser String
+lPrint= lexeme $ some (satisfy isAlpha)
+
 lInteger :: Parser Integer
 lInteger =
   lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
@@ -77,18 +81,63 @@ pAtom =
     ]
 
 -- Helper function for left associative
-leftAssoc :: Exp -> [Exp] -> Exp
-leftAssoc f [] = f
-leftAssoc f (f':fs) = leftAssoc (Apply f f') fs
+-- leftAssoc :: Exp -> [Exp] -> Exp
+-- leftAssoc f [] = f
+-- leftAssoc f (f':fs) = leftAssoc (Apply f f') fs
 
 -- Helper function for left associative
 
+-- Added ML
+pKExp :: Parser Exp
+pKExp =
+  choice
+    [ KvGet
+        <$> (lKeyword "get" *> pAtom),
+      KvPut
+        <$> (lKeyword "put" *> pAtom)
+        <*> pAtom,
+      do
+        lKeyword "print"
+        lString "\""
+        x <- lPrint
+        lString "\""
+        y <- pAtom
+        pure $ Print x y,
+      pAtom
+    ]
+    
+-- Added ML
+pHExp :: Parser Exp
+pHExp = pKExp >>= chain
+  where
+    chain x = 
+      choice
+        [ do
+            lString "**"
+            y <- pHExp
+            chain $ Pow x y,
+          pure x  
+        ]
 
+-- pFExp :: Parser Exp
+-- pFExp = do
+--   func <- pAtom     
+--   args <- many pAtom
+--   pure $ leftAssoc func args
+
+-- Added ML
 pFExp :: Parser Exp
-pFExp = do
-  func <- pAtom     
-  args <- many pAtom
-  pure $ leftAssoc func args
+pFExp = pHExp >>= chain
+  where
+    chain x =
+      choice
+        [ do
+            space
+            y <- pHExp
+            chain $ Apply x y,
+          pure x
+        ]
+
 
 
 pLExp :: Parser Exp
@@ -110,11 +159,11 @@ pExp1 = pLExp >>= chain
   where
     chain x =
       choice
+        -- [ do
+        --     lString "**"
+        --     y <- pLExp
+        --     chain $ Pow x y,
         [ do
-            lString "**"
-            y <- pLExp
-            chain $ Pow x y,
-          do
             lString "*"
             y <- pLExp
             chain $ Mul x y,
@@ -137,17 +186,26 @@ pExp0 = pExp1 >>= chain
           do
             lString "-"
             y <- pExp1
-            chain $ Sub x y,
-          do
+            chain $ Sub x y
+          -- do
+          --   lString "=="
+          --   y <- pExp1
+          --   chain $ Eql x y,
+          -- pure x
+        ]
+
+-- Added ML
+pExp :: Parser Exp
+pExp = pExp0 >>= chain
+  where
+    chain x = 
+      choice
+        [ do
             lString "=="
-            y <- pExp1
+            y <- pExp0
             chain $ Eql x y,
           pure x
         ]
-
-pExp :: Parser Exp
-pExp = pExp0
-
 parseAPL :: FilePath -> String -> Either String Exp
 parseAPL fname s = case parse (space *> pExp <* eof) fname s of
   Left err -> Left $ errorBundlePretty err
