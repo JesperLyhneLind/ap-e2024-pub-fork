@@ -64,5 +64,15 @@ tests =
         "Lexing edge cases"
         [ parserTest "2 " $ CstInt 2,
           parserTest " 2" $ CstInt 2
+        ],
+      testGroup
+        "Let-binding, Lambda, and Try-Catch"
+        [ parserTest "let x = y in x" $ Let "x" (Var "y") (Var "x"),
+          parserTestFail "let true = y in z",
+          parserTestFail "x let v = 2 in v",
+          parserTest "let y = true in y" $ Let "y" (CstBool True) (Var "y"),
+          parserTest "\\x -> x + 1" $ Lambda "x" (Add (Var "x") (CstInt 1)),
+          parserTest "try x catch y" $ TryCatch (Var "x") (Var "y"),
+          parserTest "try 1 catch 2" $ TryCatch (CstInt 1) (CstInt 2)
         ]
     ]

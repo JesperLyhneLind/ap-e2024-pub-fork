@@ -99,6 +99,9 @@ pLExp =
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
       -- pAtom
+      Lambda <$> (lString "\\" *> lVName <* lString "->") <*> pExp,
+      Let <$> (lKeyword "let" *> lVName) <*> (lString "=" *> pExp) <*> (lKeyword "in" *> pExp),
+      TryCatch <$> (lKeyword "try" *> pExp) <*> (lKeyword "catch" *> pExp),
       pFExp
     ]
 
