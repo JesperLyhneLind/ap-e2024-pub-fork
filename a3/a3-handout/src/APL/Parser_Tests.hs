@@ -66,6 +66,27 @@ tests =
           parserTest " 2" $ CstInt 2
         ],
       testGroup
+        "Function application"
+        [ parserTest "x 1" $ Apply (Var "x") (CstInt 1),
+          parserTest "x y z" $ Apply (Apply (Var "x") (Var "y")) (Var "z"),
+          parserTest " x (y z)" $ Apply (Var "x") (Apply (Var "y") (Var "z")),
+          parserTestFail "x if x then y else z"
+        ],
+      testGroup
+        "Eql and Pow"
+        [ parserTest "x*y**z" $ Mul (Var "x") (Pow (Var "y") (Var "z")),
+          parserTest "x+y==y+x" $ Eql (Add (Var "x") (Var "y")) (Add (Var "y") (Var "x")),
+          parserTest "x**y**z" $ Pow (Var "x") (Pow (Var "y") (Var "z")),
+          parserTest "(x**y)**z" $ Pow (Pow (Var "x") (Var "y")) (Var "z")
+        ],
+      testGroup
+        "print, put and get"
+        [ parserTest "put x y" $ KvPut (Var "x") (Var "y"),
+          parserTest "get x + y" $ Add (KvGet (Var "x")) (Var "y"),
+          parserTest "getx" $ Var "getx",
+          parserTest "print \"bar\" x" $ Print "bar" (Var "x")
+        ],
+      testGroup
         "Let-binding, Lambda, and Try-Catch"
         [ parserTest "let x = y in x" $ Let "x" (Var "y") (Var "x"),
           parserTestFail "let true = y in z",
