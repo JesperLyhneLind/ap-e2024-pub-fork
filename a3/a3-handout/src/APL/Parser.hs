@@ -114,7 +114,8 @@ pKExp =
 
 -- Added ML
 pFExp :: Parser Exp
-pFExp = pKExp >>= chain
+-- changed to pAtom cause of discord dicussion
+pFExp = pAtom >>= chain
   where
     chain x =
       choice
