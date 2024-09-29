@@ -187,7 +187,8 @@ pExp0 = pExp1 >>= chain
           do
             lString "-"
             y <- pExp1
-            chain $ Sub x y
+            chain $ Sub x y,
+          pure x
           -- do
           --   lString "=="
           --   y <- pExp1
