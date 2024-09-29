@@ -80,13 +80,6 @@ pAtom =
       lString "(" *> pExp <* lString ")"
     ]
 
--- Helper function for left associative
--- leftAssoc :: Exp -> [Exp] -> Exp
--- leftAssoc f [] = f
--- leftAssoc f (f':fs) = leftAssoc (Apply f f') fs
-
--- Helper function for left associative
-
 -- Added ML
 pKExp :: Parser Exp
 pKExp =
@@ -105,16 +98,9 @@ pKExp =
         pure $ Print x y,
       pAtom
     ]
-    
--- pFExp :: Parser Exp
--- pFExp = do
---   func <- pAtom     
---   args <- many pAtom
---   pure $ leftAssoc func args
 
 -- Added ML
 pFExp :: Parser Exp
--- changed to pAtom cause of discord dicussion
 pFExp = pKExp >>= chain
   where
     chain x =
@@ -126,8 +112,6 @@ pFExp = pKExp >>= chain
           pure x
         ]
 
-
-
 pLExp :: Parser Exp
 pLExp =
   choice
@@ -135,7 +119,6 @@ pLExp =
         <$> (lKeyword "if" *> pExp)
         <*> (lKeyword "then" *> pExp)
         <*> (lKeyword "else" *> pExp),
-      -- pAtom
       Lambda <$> (lString "\\" *> lVName <* lString "->") <*> pExp,
       Let <$> (lKeyword "let" *> lVName) <*> (lString "=" *> pExp) <*> (lKeyword "in" *> pExp),
       TryCatch <$> (lKeyword "try" *> pExp) <*> (lKeyword "catch" *> pExp),
@@ -160,10 +143,6 @@ pExp1 = pHExp >>= chain
   where
     chain x =
       choice
-        -- [ do
-        --     lString "**"
-        --     y <- pLExp
-        --     chain $ Pow x y,
         [ do
             lString "*"
             y <- pHExp
@@ -189,11 +168,6 @@ pExp0 = pExp1 >>= chain
             y <- pExp1
             chain $ Sub x y,
           pure x
-          -- do
-          --   lString "=="
-          --   y <- pExp1
-          --   chain $ Eql x y,
-          -- pure x
         ]
 
 -- Added ML
