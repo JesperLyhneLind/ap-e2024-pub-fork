@@ -51,7 +51,7 @@ lVName = lexeme $ try $ do
 
 -- Added ML
 lPrint :: Parser String
-lPrint= lexeme $ some (satisfy isAlpha)
+lPrint= lexeme $ many (satisfy isAlpha)
 
 lInteger :: Parser Integer
 lInteger =
