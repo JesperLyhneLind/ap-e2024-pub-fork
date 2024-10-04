@@ -16,7 +16,7 @@ evalIO' :: Exp -> IO (Either Error Val)
 evalIO' = runEvalIO . eval
 
 tests :: TestTree
-tests = testGroup "Free monad interpreters" [pureTests, ioTests]
+tests = testGroup "Free monad interpreters" [pureTests, ioTests, tryCatchOpTests]
 
 pureTests :: TestTree
 pureTests =
@@ -92,4 +92,23 @@ ioTests =
         --            Print "This is 1" $
         --              CstInt 1
         --    (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1)
+    ]
+
+tryCatchOpTests :: TestTree
+tryCatchOpTests =
+  testGroup
+    "TryCatchOp Effect"
+    [ testCase "Test 1" $
+        runEval (Free $ TryCatchOp (failure "Oh no!") (pure "Success!"))
+          @?= ([], Right "Success!"),
+      testCase "Test 2" $
+        let divZero = CstInt 1 `Div` CstInt 0
+        in runEval (eval $ TryCatch (CstInt 5) divZero)
+          @?= ([], Right $ ValInt 5),
+      testCase "Test 3" $
+        let divZero = CstInt 1 `Div` CstInt 0
+            badEql = CstInt 0 `Eql` CstBool True
+        in do
+            result <- runEvalIO $ eval $ TryCatch badEql divZero
+            result @?= Left "Division by zero"
     ]
