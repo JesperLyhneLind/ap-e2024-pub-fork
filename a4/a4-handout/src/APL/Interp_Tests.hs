@@ -110,5 +110,21 @@ tryCatchOpTests =
             badEql = CstInt 0 `Eql` CstBool True
         in do
             result <- runEvalIO $ eval $ TryCatch badEql divZero
-            result @?= Left "Division by zero"
+            result @?= Left "Division by zero",
+      testCase "Simple success" $
+        runEval
+          (Free $ TryCatchOp (pure "No failure") (pure "Fallback"))
+          @?= ([], Right "No failure"),
+      testCase "Nested TryCatch" $
+        let action = catch
+              (catch
+                 (failure "First failure")
+                 (failure "Second failure")
+              )
+              (pure $ ValInt 100)
+        in runEval action @?= ([], Right $ ValInt 100),
+      testCase "No fallback with valid division" $
+        let validDiv = CstInt 10 `Div` CstInt 2
+        in runEval (eval $ TryCatch (Add (CstInt 5) validDiv) (CstInt 100))
+          @?= ([], Right $ ValInt 10)
     ]
