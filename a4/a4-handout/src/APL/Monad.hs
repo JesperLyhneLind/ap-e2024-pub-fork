@@ -88,7 +88,7 @@ instance Functor EvalOp where
   fmap _ (ErrorOp e) = ErrorOp e
   fmap f (TryCatchOp m1 m2) = TryCatchOp (f m1) (f m2) -- Handle TryCatchOp
   fmap f (KvGetOp key k) = KvGetOp key $ f . k
-  fmap f (KvPutOp k v m) = KvPutOp k v $ f m
+  fmap f (KvPutOp key val m) = KvPutOp key val $ f m
 
 type EvalM a = Free EvalOp a
 
@@ -129,7 +129,7 @@ evalKvGet :: Val -> EvalM Val
 evalKvGet key = Free $ KvGetOp key pure
 
 evalKvPut :: Val -> Val -> EvalM ()
-evalKvPut key v = Free $ KvPutOp key v $ pure ()
+evalKvPut key val = Free $ KvPutOp key val $ pure ()
 
 transaction :: EvalM () -> EvalM ()
 transaction = error "TODO"
