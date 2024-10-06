@@ -85,8 +85,13 @@ runEvalIO evalm = do
         Left err -> pure $ Left err
         Right state -> 
           case lookup key state of
-            Nothing -> pure $ Left $ "Key not found" ++ show key
-            Just key -> runEvalIO' r db (k key)
+            Nothing -> do
+              putStr $ "Invalid key: " ++ show key ++ ". Enter a replacement: "
+              input <- prompt ""
+              case readVal input of
+                Nothing -> pure $ Left "Invalid input"
+                Just val -> runEvalIO' r db (k val)
+            Just key' -> runEvalIO' r db (k key')
     runEvalIO' r db (Free (KvPutOp key val m)) = do
       dbState <- readDB db
       case dbState of
