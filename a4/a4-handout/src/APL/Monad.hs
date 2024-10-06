@@ -129,7 +129,7 @@ evalKvGet :: Val -> EvalM Val
 evalKvGet key = Free $ KvGetOp key pure
 
 evalKvPut :: Val -> Val -> EvalM ()
-evalKvPut key v = Free $ KvPutOp 
+evalKvPut key v = Free $ KvPutOp key v $ pure ()
 
 transaction :: EvalM () -> EvalM ()
 transaction = error "TODO"
