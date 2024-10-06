@@ -109,7 +109,7 @@ tryCatchOpTests =
         let divZero = CstInt 1 `Div` CstInt 0
             badEql = CstInt 0 `Eql` CstBool True
         in do
-            result <- runEvalIO $ eval $ TryCatch badEql divZero
+            result <- evalIO' $ TryCatch badEql divZero
             result @?= Left "Division by zero",
       testCase "Simple success" $
         runEval
