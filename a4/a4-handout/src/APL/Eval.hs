@@ -71,3 +71,19 @@ eval (Apply e1 e2) = do
       failure "Cannot apply non-function"
 eval (TryCatch e1 e2) =
   eval e1 `catch` eval e2
+eval (Print s e) = do
+  val <- eval e
+  let printedString = case val of
+                        ValInt i -> s ++ ": " ++ show i
+                        ValBool b -> s ++ ": " ++ show b
+                        ValFun {} -> s ++ ": #<fun>"
+  evalPrint printedString
+  return val
+eval (KvPut k_exp v_exp) = do
+  k <- eval k_exp
+  v <- eval v_exp
+  evalKvPut k v
+  pure v
+eval (KvGet k_exp) = do
+  k <- eval k_exp
+  evalKvGet k
