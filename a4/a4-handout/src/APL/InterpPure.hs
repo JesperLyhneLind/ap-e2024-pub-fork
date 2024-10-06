@@ -21,7 +21,7 @@ runEval = runEval' envEmpty stateInitial
         Right val -> (ps1, Right val) -- Returning the result of m1 if it succeeds
     runEval' r s (Free (KvGetOp key k)) =
       case lookup key s of
-        Nothing -> ([],Left $ "Key not found" ++ show key)
+        Nothing -> ([], Left $ "Key not found: " ++ show key)
         Just key' -> runEval' r s (k key')
     runEval' r s (Free (KvPutOp key val m)) =
       let s' = (key, val) : filter ((/= key) . fst) s -- removing existing assoctiation and adding new

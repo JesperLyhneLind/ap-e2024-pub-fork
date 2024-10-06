@@ -65,7 +65,17 @@ pureTests =
       --
       testCase "Div0" $
         eval' (Div (CstInt 7) (CstInt 0))
-          @?= ([], Left "Division by zero")
+          @?= ([], Left "Division by zero"),
+      -- 
+      testCase "evalKvGetPure" $
+        runEval (evalKvGet $ ValInt 0)
+          @?= ([], Left "Key not found: ValInt 0"),
+      -- 
+      testCase "Put and get" $ do
+        let put0 = KvPutOp (ValInt 0) (ValInt 1)
+        let get0 = Free $ KvGetOp (ValInt 0) $ \val -> pure val
+        runEval (Free $ put0 get0)
+          @?= ([],Right (ValInt 1))
     ]
 
 ioTests :: TestTree
@@ -84,14 +94,28 @@ ioTests =
         -- NOTE: This test will give a runtime error unless you replace the
         -- version of `eval` in `APL.Eval` with a complete version that supports
         -- `Print`-expressions. Uncomment at your own risk.
-        testCase "print 2" $ do
-           (out, res) <-
-             captureIO [] $
-               evalIO' $
-                 Print "This is also 1" $
-                   Print "This is 1" $
-                     CstInt 1
-           (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1)
+      testCase "print 2" $ do
+          (out, res) <-
+            captureIO [] $
+              evalIO' $
+                Print "This is also 1" $
+                  Print "This is 1" $
+                    CstInt 1
+          (out, res) @?= (["This is 1: 1", "This is also 1: 1"], Right $ ValInt 1),
+      -- 
+      testCase "Missing key - valid input" $ do
+        (_, res) <-
+          captureIO ["ValInt 1"] $
+            runEvalIO $
+              Free $ KvGetOp (ValInt 0) $ \val -> pure val
+        res @?= Right (ValInt 1),
+      -- 
+      testCase "Missing key - invalid input" $ do
+        (_, res) <-
+          captureIO ["dd"] $
+            runEvalIO $
+              Free $ KvGetOp (ValInt 0) $ \val -> pure val
+        res @?= Left "Invalid input: dd"
     ]
 
 tryCatchOpTests :: TestTree
@@ -101,20 +125,24 @@ tryCatchOpTests =
     [ testCase "Test 1" $
         runEval (Free $ TryCatchOp (failure "Oh no!") (pure "Success!"))
           @?= ([], Right "Success!"),
+      -- 
       testCase "Test 2" $
         let divZero = CstInt 1 `Div` CstInt 0
         in runEval (eval $ TryCatch (CstInt 5) divZero)
           @?= ([], Right $ ValInt 5),
+      -- 
       testCase "Test 3" $
         let divZero = CstInt 1 `Div` CstInt 0
             badEql = CstInt 0 `Eql` CstBool True
         in do
             result <- evalIO' $ TryCatch badEql divZero
             result @?= Left "Division by zero",
+      -- 
       testCase "Simple success" $
         runEval
           (Free $ TryCatchOp (pure "No failure") (pure "Fallback"))
           @?= ([], Right "No failure"),
+      -- 
       testCase "Nested TryCatch" $
         let action = catch
               (catch
@@ -123,6 +151,7 @@ tryCatchOpTests =
               )
               (pure $ ValInt 100)
         in runEval action @?= ([], Right $ ValInt 100),
+      -- 
       testCase "No fallback with valid division" $
         let validDiv = CstInt 10 `Div` CstInt 2
         in runEval (eval $ TryCatch (Add (CstInt 5) validDiv) (CstInt 100))
