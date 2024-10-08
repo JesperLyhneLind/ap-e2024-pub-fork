@@ -18,6 +18,8 @@ This week we will look at testing based on properties. It also serves as an exam
 
 * [How to Specify it - Guide to writing properties of pure functions](HowToSpecifyIt.pdf)
 
+* [The sad state of property-based testing libraries](https://stevana.github.io/the_sad_state_of_property-based_testing_libraries.html)
+
 ## Exercises
 
 In these exercises you will develop QuickCheck generators for expressions and
@@ -38,7 +40,6 @@ In particular:
   method `subExp` for enumerating the subexpressions of an expressions.
 * `APL.Error` is a new module defining a type of errors, which we will use
   instead of strings when reporting errors.
-* `APL.Parser` is the parser from week 3.
 * `APL.Eval` is the evaluator from week 2, modified to use the new error type.
 * `APL.Check` is the type checker from week 2, where `checkExp` is modified
   to return a *list* of possible errors.
@@ -130,8 +131,6 @@ Then run `sample (sized genExp)` in ghci.
 
 Extend `genExp` so that it can produce all possible expressions. Declare `Exp`
 to be an instance of `Arbitrary` with `arbitrary = sized genExp`.
-
-TODO solution
 
 ### Associativity
 
