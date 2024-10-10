@@ -1,4 +1,4 @@
-module SPC.Core
+module SPC
   ( -- * SPC startup
     SPC,
     startSPC,
@@ -40,11 +40,6 @@ data SPCMsg -- TODO: add messages.
 
 -- | A Handle to the SPC instance.
 data SPC = SPC (Server SPCMsg)
-
--- | The central state. Must be protected from the bourgeoisie.
-data SPCState = SPCState
-  { spcChan :: Chan SPCMsg
-  }
 
 startSPC :: IO SPC
 startSPC = do
