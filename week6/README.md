@@ -500,7 +500,7 @@ jobStatus :: SPC -> JobId -> IO (Maybe JobStatus)
 data SPCMsg
   = ...
   | -- | Immediately reply the status of the job.
-    MsgJobStatus JobId (ReplyChan JobStatus)
+    MsgJobStatus JobId (ReplyChan (Maybe JobStatus))
 
 handleMsg :: Chan SPCMsg -> SPCM ()
 handleMsg c = do
@@ -669,11 +669,11 @@ send a response to all relevant channels.
 ```Haskell
 data SPCMsg
   = ...
-  | MsgJobWait JobId (ReplyChan JobDoneReason)
+  | MsgJobWait JobId (ReplyChan (Maybe JobDoneReason))
 
 data SPCState = SPCState
   { ...
-    spcWaiting :: [(JobId, ReplyChan JobDoneReason)]
+    spcWaiting :: [(JobId, ReplyChan (Maybe JobDoneReason))]
   }
 
 handleMsg :: Chan SPCMsg -> SPCM ()
@@ -969,9 +969,6 @@ to contain a *deadline*. When the current time (as retrieved by
 
 4. Extend `handleMsg` to call `checkTimeouts` as appropriate and
    handle the new tick message type.
- 
-5. Modify `startSPC` to launch a thread that sends a tick message
-   to SPC every second.
 
 5. Modify `startSPC` to launch a thread that sends a tick message
    to SPC every second.
