@@ -3,7 +3,7 @@ module APL.Tests
   )
 where
 
-import APL.AST (Exp (..), subExp)
+import APL.AST (Exp (..), subExp, VName)
 import APL.Error (isVariableError, isDomainError, isTypeError)
 import APL.Check (checkExp)
 import Test.QuickCheck
@@ -15,10 +15,11 @@ import Test.QuickCheck
   , checkCoverage
   , oneof
   , sized
+  , frequency
   )
 
 instance Arbitrary Exp where
-  arbitrary = sized genExp
+  arbitrary = sized (`genExp` [])
 
   shrink (Add e1 e2) =
     e1 : e2 : [Add e1' e2 | e1' <- shrink e1] ++ [Add e1 e2' | e2' <- shrink e2]
@@ -44,26 +45,27 @@ instance Arbitrary Exp where
     e1 : e2 : [TryCatch e1' e2 | e1' <- shrink e1] ++ [TryCatch e1 e2' | e2' <- shrink e2]
   shrink _ = []
 
-genExp :: Int -> Gen Exp
-genExp 0 = oneof [CstInt <$> arbitrary, CstBool <$> arbitrary]
-genExp size =
-  oneof
-    [ CstInt <$> arbitrary
-    , CstBool <$> arbitrary
-    , Add <$> genExp halfSize <*> genExp halfSize
-    , Sub <$> genExp halfSize <*> genExp halfSize
-    , Mul <$> genExp halfSize <*> genExp halfSize
-    , Div <$> genExp halfSize <*> genExp halfSize
-    , Pow <$> genExp halfSize <*> genExp halfSize
-    , Eql <$> genExp halfSize <*> genExp halfSize
-    , If <$> genExp thirdSize <*> genExp thirdSize <*> genExp thirdSize
-    , Var <$> arbitrary
-    , Let <$> arbitrary <*> genExp halfSize <*> genExp halfSize
-    , Lambda <$> arbitrary <*> genExp (size - 1)
-    , Apply <$> genExp halfSize <*> genExp halfSize 
-    , TryCatch <$> genExp halfSize <*> genExp halfSize
+genExp :: Int -> [VName] -> Gen Exp
+genExp 0 _ = oneof [CstInt <$> arbitrary, CstBool <$> arbitrary]
+genExp size vs =
+  frequency
+    [ (20, CstInt <$> arbitrary)
+    , (10, CstBool <$> arbitrary)
+    , (10, Add <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, Sub <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, Mul <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, Div <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, Pow <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, Eql <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, If <$> genExp thirdSize vs <*> genExp thirdSize vs <*> genExp thirdSize vs)
+    , (5, Var <$> arbitrary)
+    , (1, Let <$> arbitrary <*> genExp halfSize vs <*> genExp halfSize (var:vs)) -- variable added to scope
+    , (1, Lambda <$> arbitrary <*> genExp (size - 1) (var:vs)) -- variable added to scope
+    , (10, Apply <$> genExp halfSize vs <*> genExp halfSize vs)
+    , (10, TryCatch <$> genExp halfSize vs <*> genExp halfSize vs)
     ]
   where
+    var = "var" ++ show (length vs) -- generate unique names for new variables
     halfSize = size `div` 2
     thirdSize = size `div` 3
 
