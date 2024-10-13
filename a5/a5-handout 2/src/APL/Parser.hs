@@ -1,4 +1,4 @@
-module APL.Parser (parseAPL) where
+module APL.Parser (parseAPL, keywords) where
 
 import APL.AST (Exp (..), VName)
 import Control.Monad (void)
@@ -16,8 +16,9 @@ import Text.Megaparsec
     satisfy,
     some,
     try,
+    optional,
   )
-import Text.Megaparsec.Char (space)
+import Text.Megaparsec.Char (space, char)
 
 type Parser = Parsec Void String
 
@@ -46,9 +47,15 @@ lVName = lexeme $ try $ do
     then fail "Unexpected keyword"
     else pure v
 
+-- Adding Support for negative integers
 lInteger :: Parser Integer
-lInteger =
-  lexeme $ read <$> some (satisfy isDigit) <* notFollowedBy (satisfy isAlphaNum)
+lInteger = lexeme $ do
+  sign <- optional (char '-')
+  digits <- some (satisfy isDigit)
+  let number = read digits
+  return $ case sign of
+    Just _  -> -number
+    Nothing -> number
 
 lString :: String -> Parser ()
 lString s = lexeme $ void $ chunk s

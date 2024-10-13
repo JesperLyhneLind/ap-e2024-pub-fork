@@ -3,9 +3,10 @@ module APL.Tests
   )
 where
 
-import APL.AST (Exp (..), subExp, VName)
+import APL.AST (Exp (..), subExp, VName, printExp)
 import APL.Error (isVariableError, isDomainError, isTypeError)
 import APL.Check (checkExp)
+import APL.Parser (parseAPL, keywords)
 import Test.QuickCheck
   ( Property
   , Gen
@@ -16,6 +17,9 @@ import Test.QuickCheck
   , oneof
   , sized
   , frequency
+  , elements
+  , vectorOf
+  , listOf
   )
 
 instance Arbitrary Exp where
@@ -46,8 +50,12 @@ instance Arbitrary Exp where
   shrink _ = []
 
 genExp :: Int -> [VName] -> Gen Exp
-genExp 0 _ = oneof [CstInt <$> arbitrary, CstBool <$> arbitrary]
+genExp 0 _ =
+    oneof [ CstInt <$> abs <$> arbitrary
+          , CstBool <$> arbitrary]
 genExp size vs =
+  do
+  var <- genVar -- generate unique names for new variables
   frequency
     [ (20, CstInt <$> arbitrary)
     , (10, CstBool <$> arbitrary)
@@ -58,16 +66,25 @@ genExp size vs =
     , (10, Pow <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, Eql <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, If <$> genExp thirdSize vs <*> genExp thirdSize vs <*> genExp thirdSize vs)
-    , (5, Var <$> arbitrary)
-    , (1, Let <$> arbitrary <*> genExp halfSize vs <*> genExp halfSize (var:vs)) -- variable added to scope
-    , (1, Lambda <$> arbitrary <*> genExp (size - 1) (var:vs)) -- variable added to scope
+    , (5, Var <$> genVar)
+    , (1, Let <$> pure var <*> genExp halfSize (var : vs) <*> genExp halfSize (var : vs)) -- variable added to scope
+    , (1, Lambda <$> pure var <*> genExp (size - 1) (var : vs)) -- variable added to scope
     , (10, Apply <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, TryCatch <$> genExp halfSize vs <*> genExp halfSize vs)
     ]
   where
-    var = "var" ++ show (length vs) -- generate unique names for new variables
     halfSize = size `div` 2
     thirdSize = size `div` 3
+
+genVar :: Gen VName
+genVar = do
+  char1 <- elements ['a' .. 'z'] -- first char lowercase
+  chars <- sequenceA $ replicate 3 (elements (['a' .. 'z'] ++ ['0' .. '9'])) -- 3 subsequent lowercase or integer
+  let possibleVars = take 3 (iterate init (char1 : chars))  -- 2, 3, and 4 character names
+  name <- elements possibleVars
+  if name `elem` keywords
+    then genVar
+    else pure name
 
 expCoverage :: Exp -> Property
 expCoverage e = checkCoverage
@@ -81,14 +98,20 @@ expCoverage e = checkCoverage
   $ ()
 
 parsePrinted :: Exp -> Bool
-parsePrinted _ = undefined
+parsePrinted exp =
+  let printedExp = printExp exp
+  in case parseAPL "" printedExp of
+    Left _ -> True
+    Right newexp -> exp == newexp
 
 onlyCheckedErrors :: Exp -> Bool
 onlyCheckedErrors _ = undefined
 
 properties :: [(String, Property)]
 properties =
-  [ ("expCoverage", property expCoverage)
-  , ("onlyCheckedErrors", property onlyCheckedErrors)
-  , ("parsePrinted", property parsePrinted)
+  [ 
+    -- Remove Print for proper testing of others
+    ("expCoverage", property expCoverage),
+    ("onlyCheckedErrors", property onlyCheckedErrors),
+    ("parsePrinted", property parsePrinted)
   ]
