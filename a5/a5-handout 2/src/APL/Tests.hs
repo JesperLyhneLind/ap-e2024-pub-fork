@@ -18,8 +18,6 @@ import Test.QuickCheck
   , sized
   , frequency
   , elements
-  , vectorOf
-  , listOf
   )
 
 instance Arbitrary Exp where
@@ -96,11 +94,11 @@ expCoverage e = checkCoverage
   $ ()
 
 parsePrinted :: Exp -> Bool
-parsePrinted exp =
-  let printedExp = printExp exp
+parsePrinted expr =
+  let printedExp = printExp expr
   in case parseAPL "" printedExp of
     Left _ -> True
-    Right newexp -> exp == newexp
+    Right newexp -> expr == newexp
 
 onlyCheckedErrors :: Exp -> Bool
 onlyCheckedErrors _ = undefined
