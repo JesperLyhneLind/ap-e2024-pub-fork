@@ -49,7 +49,7 @@ lVName = lexeme $ try $ do
 
 -- Adding Support for negative integers
 lInteger :: Parser Integer
-lInteger = lexeme $ do
+lInteger = lexeme. try $ do
   sign <- optional (char '-')
   digits <- some (satisfy isDigit)
   let number = read digits

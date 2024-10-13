@@ -97,7 +97,7 @@ parsePrinted :: Exp -> Bool
 parsePrinted expr =
   let printedExp = printExp expr
   in case parseAPL "" printedExp of
-    Left _ -> True
+    Left _ -> False
     Right newexp -> expr == newexp
 
 onlyCheckedErrors :: Exp -> Bool
