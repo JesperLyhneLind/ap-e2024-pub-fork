@@ -53,7 +53,7 @@ genExp size vs =
   do
   var <- genVar -- generate unique names for new variables
   frequency
-    [ (20, CstInt <$> arbitrary)
+    [ (10, CstInt <$> arbitrary)
     , (10, CstBool <$> arbitrary)
     , (10, Add <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, Sub <$> genExp halfSize vs <*> genExp halfSize vs)
@@ -62,9 +62,9 @@ genExp size vs =
     , (10, Pow <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, Eql <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, If <$> genExp thirdSize vs <*> genExp thirdSize vs <*> genExp thirdSize vs)
-    , (5, Var <$> genVar)
-    , (1, Let <$> pure var <*> genExp halfSize (var : vs) <*> genExp halfSize (var : vs)) -- variable added to scope
-    , (1, Lambda <$> pure var <*> genExp (size - 1) (var : vs)) -- variable added to scope
+    , (5, if null vs then Var <$> genVar else Var <$> elements vs) -- uses existing variable, if vs is not empty
+    , (20, Let <$> pure var <*> genExp halfSize (var : vs) <*> genExp halfSize (var : vs)) -- variable added to scope
+    , (20, Lambda <$> pure var <*> genExp (size - 1) (var : vs)) -- variable added to scope
     , (10, Apply <$> genExp halfSize vs <*> genExp halfSize vs)
     , (10, TryCatch <$> genExp halfSize vs <*> genExp halfSize vs)
     ]
