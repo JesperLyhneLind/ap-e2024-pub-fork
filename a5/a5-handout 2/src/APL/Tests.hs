@@ -50,9 +50,7 @@ instance Arbitrary Exp where
   shrink _ = []
 
 genExp :: Int -> [VName] -> Gen Exp
-genExp 0 _ =
-    oneof [ CstInt <$> abs <$> arbitrary
-          , CstBool <$> arbitrary]
+genExp 0 _ = oneof [ CstInt <$> arbitrary, CstBool <$> arbitrary]
 genExp size vs =
   do
   var <- genVar -- generate unique names for new variables
