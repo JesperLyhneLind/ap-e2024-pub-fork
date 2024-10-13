@@ -7,6 +7,7 @@ import APL.AST (Exp (..), subExp, VName, printExp)
 import APL.Error (isVariableError, isDomainError, isTypeError)
 import APL.Check (checkExp)
 import APL.Parser (parseAPL, keywords)
+import APL.Eval (eval, runEval)
 import Test.QuickCheck
   ( Property
   , Gen
@@ -101,7 +102,10 @@ parsePrinted expr =
     Right newexp -> expr == newexp
 
 onlyCheckedErrors :: Exp -> Bool
-onlyCheckedErrors _ = undefined
+onlyCheckedErrors e = 
+  case runEval (eval e) of
+    Right _ -> True
+    Left err -> err `elem` checkExp e
 
 properties :: [(String, Property)]
 properties =
