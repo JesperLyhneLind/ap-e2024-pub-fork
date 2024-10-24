@@ -91,21 +91,24 @@ type WorkerName = String
 
 -- | Messages sent to workers. These are sent both by SPC and by
 -- processes spawned by the workes.
-data WorkerMsg -- TODO: add messages.
+data WorkerMsg
+  = MsgWorkerJob JobId Job
+  | MsgWorkerTerminate
 
 -- Messages sent to SPC.
 data SPCMsg
   = -- | Add the job, and reply with the job ID.
     MsgJobAdd Job (ReplyChan JobId)
-  | -- | Cancel the given job.
-    MsgJobCancel JobId
+  -- | -- | Cancel the given job.
+  --   MsgJobCancel JobId
   | -- | Immediately reply the status of the job.
     MsgJobStatus JobId (ReplyChan JobStatus)
-  | -- | Reply when the job is done.
-    MsgJobWait JobId (ReplyChan JobDoneReason)
-  | -- | Some time has passed.
-    MsgTick
-
+  -- | -- | Reply when the job is done.
+  --   MsgJobWait JobId (ReplyChan JobDoneReason)
+  -- | -- | Some time has passed.
+  --   MsgTick
+  |
+    MsgWorkerAdd WorkerName (ReplyChan (Either String Worker))
 -- | A handle to the SPC instance.
 data SPC = SPC (Server SPCMsg)
 
@@ -117,7 +120,9 @@ data SPCState = SPCState
   { spcJobsPending :: [(JobId, Job)],
     spcJobsRunning :: [(JobId, Job)],
     spcJobsDone :: [(JobId, JobDoneReason)],
-    spcJobCounter :: JobId
+    spcJobCounter :: JobId,
+    -- Adding state entry for workers
+    spcWorkers :: [(WorkerName, Worker)]
     -- TODO: you will need to add more fields.
   }
 
@@ -206,6 +211,22 @@ handleMsg c = do
         (_, Just _, _) -> JobRunning
         (_, _, Just r) -> JobDone r
         _ -> JobUnknown
+    MsgWorkerAdd workerName rsvp -> do
+      state <- get
+      case lookup workerName $ spcWorkers state of
+        Just _ -> io $ reply rsvp $ Left "Worker exists already"
+        Nothing -> do
+          -- Create a new worker process
+          sWMsg <- io $ spawn $ workerListen workerName
+          let newWorker = Worker sWMsg
+          -- Update the state to include the new worker
+          put $
+            state
+              { spcWorkers = (workerName, newWorker) : spcWorkers state
+              }
+          -- Reply with the newly created worker
+          io $ reply rsvp $ Right newWorker
+
 
 startSPC :: IO SPC
 startSPC = do
@@ -214,7 +235,8 @@ startSPC = do
           { spcJobCounter = JobId 0,
             spcJobsPending = [],
             spcJobsRunning = [],
-            spcJobsDone = []
+            spcJobsDone = [],
+            spcWorkers = []
           }
   c <- spawn $ \c -> runSPCM initial_state $ forever $ handleMsg c
   void $ spawn $ timer c
@@ -246,8 +268,10 @@ jobCancel (SPC c) jobid =
 
 -- | Add a new worker with this name. Fails with 'Left' if a worker
 -- with that name already exists.
+-- Just using same structure as others.
 workerAdd :: SPC -> WorkerName -> IO (Either String Worker)
-workerAdd = undefined
+workerAdd (SPC c) workerName = 
+  requestReply c $ MsgWorkerAdd workerName
 
 -- | Shut down a running worker. No effect if the worker is already
 -- terminated.
