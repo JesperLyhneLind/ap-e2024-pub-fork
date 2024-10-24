@@ -238,7 +238,7 @@ handleMsg c = do
           io $ reply rsvp $ Right newWorker)
 
 workerListen :: WorkerName -> Chan WorkerMsg -> SPCM ()
-workerLsiten workerName c = do
+workerListen workerName c = do
   msg <- io $ receive c
   case msg of
     MsgDoJob JobId Job -> do
@@ -249,8 +249,9 @@ workerLsiten workerName c = do
           -- Run the job action and track its status
           jobAction job
           -- message that the job is running
-
+          
           -- After job is done, notify SPC that this worker is idle
+        
     -- MsgTerminate
 
 
@@ -263,8 +264,7 @@ startSPC = do
           { spcJobCounter = JobId 0,
             spcJobsPending = [],
             spcJobsRunning = [],
-            spcJobsDone = [],
-            spcWorkers = []
+            spcJobsDone = []
           }
   c <- spawn $ \c -> runSPCM initial_state $ forever $ handleMsg c
   void $ spawn $ timer c
