@@ -12,8 +12,4 @@ tests =
   localOption (mkTimeout 3000000) $
     testGroup
       "SPC (core)"
-      [testCase "add worker" $ do
-        spc <- startSPC
-        worker <- workerAdd spc "Alfred"
-        
-      ]
+      []

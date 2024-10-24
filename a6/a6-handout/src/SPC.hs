@@ -93,7 +93,6 @@ type WorkerName = String
 -- processes spawned by the workers.
 data WorkerMsg
   = MsgDoJob JobId Job
-  | MsgTerminate
 
 -- Messages sent to SPC.
 data SPCMsg
@@ -105,15 +104,20 @@ data SPCMsg
     MsgJobStatus JobId (ReplyChan JobStatus)
   | -- | Reply when the job is done.
     MsgJobWait JobId (ReplyChan JobDoneReason)
+  | -- | When worker is done with job
+    MsgJobDone JobId
   | -- | Some time has passed.
     MsgTick
   |
     MsgWorkerAdd WorkerName (ReplyChan (Either String Worker))
+
 -- | A handle to the SPC instance.
 data SPC = SPC (Server SPCMsg)
 
 -- | A handle to a worker.
 data Worker = Worker (Server WorkerMsg)
+
+data WorkerStatus = Idle | Busy JobId
 
 -- | The central state. Must be protected from the bourgeoisie.
 data SPCState = SPCState
@@ -122,10 +126,7 @@ data SPCState = SPCState
     spcJobsDone :: [(JobId, JobDoneReason)],
     spcJobCounter :: JobId,
     -- TODO: you will need to add more fields.
-    -- Adding state entry for workers
-    -- spcWorkers :: [(WorkerName, Worker)],
-    spcWorkersIdle :: [(WorkerName, Worker)],
-    spcWorkersBusy :: [(WorkerName, Worker)]
+    spcWorkers :: [(WorkerName, Worker, WorkerStatus)]
   }
 
 -- | The monad in which the main SPC thread runs. This is a state
@@ -171,29 +172,31 @@ runSPCM state (SPCM f) = fst <$> f state
 
 schedule :: SPCM ()
 schedule = undefined
--- schedule = do
---   state <- get
---   case (spcWorkersIdle state, spcJobsPending state) of
---     ()
 
 jobDone :: JobId -> JobDoneReason -> SPCM ()
 jobDone = undefined
 
-workerIsIdle :: WorkerName -> Worker -> SPCM ()
-workerIsIdle = undefined
+workerIsIdle :: WorkerName -> SPCM ()
+workerIsIdle workerName = do
+  state <- get
+  put $ 
+      state { spcWorkers = 
+                  map (\(name,worker,status) -> if name == workerName then (name,worker,Idle) else (name,worker,status))
+                        (spcWorkers state)
+              }
 
 workerIsGone :: WorkerName -> SPCM ()
-workerIsGone = undefined
+workerIsGone workerName = do
+  state <- get
+  put $ state {spcWorkers = filter (\(name,_,_) -> name /= workerName) (spcWorkers state)}
 
 checkTimeouts :: SPCM ()
 checkTimeouts = pure () -- change in Task 4
 
 workerExists :: WorkerName -> SPCM Bool
-workerExists = do
-        state <- get
-        case lookup workerName $ spcWorkers state of
-          Just _ -> True
-          Nothing -> False
+workerExists workerName = do
+  state <- get
+  pure $ any (\(name, _, _) -> name == workerName) (spcWorkers state)
 
 handleMsg :: Chan SPCMsg -> SPCM ()
 handleMsg c = do
@@ -223,38 +226,49 @@ handleMsg c = do
         _ -> JobUnknown
     MsgWorkerAdd workerName rsvp -> do
       state <- get
-      (if workerExists workerName then
+      exists <- workerExists workerName
+      if exists then
         io $ reply rsvp $ Left "Worker exists already"
       else do
-          -- Create a new worker process
-          sWMsg <- io $ spawn $ workerListen workerName
-          let newWorker = Worker sWMsg
-          -- Update the state to include the new worker
-          put $
-            state
-              { spcWorkersIdle = (workerName, newWorker) : spcWorkers state
-              }
-          -- Reply with the newly created worker
-          io $ reply rsvp $ Right newWorker)
+            sWMsg <- io $ spawn $ workerListen workerName
+            let newWorker = Worker sWMsg
+            put $
+              state
+                { spcWorkers = (workerName, newWorker, Idle) : spcWorkers state
+                }
+            io $ reply rsvp $ Right newWorker
+    MsgJobCancel _ -> undefined
+    MsgJobWait _ _ -> undefined
+    MsgJobDone _ -> undefined
+    MsgTick -> undefined
+  
+
+setWorkerToBusy :: WorkerName -> JobId -> [(WorkerName, Worker, WorkerStatus)] -> [(WorkerName, Worker, WorkerStatus)]
+setWorkerToBusy workerName job =
+  map (\(name, worker, status) -> 
+         if name == workerName 
+         then (name, worker, Busy job)
+         else (name, worker, status)
+      )
+
+
+setWorkerToIdle :: WorkerName -> [(WorkerName, Worker, WorkerStatus)] -> [(WorkerName, Worker, WorkerStatus)]
+setWorkerToIdle workerName  = 
+  map (\(name, worker, status) -> 
+         if name == workerName 
+         then (name, worker, Idle)
+         else (name, worker, status)
+      ) 
 
 workerListen :: WorkerName -> Chan WorkerMsg -> SPCM ()
 workerListen workerName c = do
   msg <- io $ receive c
   case msg of
-    MsgDoJob JobId Job -> do
-      -- modify state where the worker is changed to busy
-      modify $ \state -> let idleWorkers = removeAssoc workerName (spcWorkersIdle state)
-        in state { spcWorkersIdle = idleWorkers, spcWorkersBusy = (workerName, Worker c) : spcWorkersBusy state }
-      _ <- io $ forkIO $ do 
-          -- Run the job action and track its status
+    MsgDoJob job_id job -> do
+      state <- get
+      put $ state { spcWorkers = setWorkerToBusy workerName job_id (spcWorkers state) }
+      _ <- forkIO $ do 
           jobAction job
-          -- message that the job is running
-          
-          -- After job is done, notify SPC that this worker is idle
-        
-    -- MsgTerminate
-
-
 
 
 startSPC :: IO SPC
@@ -264,7 +278,8 @@ startSPC = do
           { spcJobCounter = JobId 0,
             spcJobsPending = [],
             spcJobsRunning = [],
-            spcJobsDone = []
+            spcJobsDone = [],
+            spcWorkers = []
           }
   c <- spawn $ \c -> runSPCM initial_state $ forever $ handleMsg c
   void $ spawn $ timer c
