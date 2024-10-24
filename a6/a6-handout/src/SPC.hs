@@ -239,12 +239,11 @@ handleMsg c = do
 
 workerListen :: WorkerName -> Chan WorkerMsg -> SPCM ()
 workerLsiten workerName c = do
-  forever $ do
   msg <- io $ receive c
   case msg of
     MsgDoJob JobId Job -> do
       -- modify state where the worker is changed to busy
-      let idleWorkers = removeAssoc workerName (spcWorkersIdle state)
+      modify $ \state -> let idleWorkers = removeAssoc workerName (spcWorkersIdle state)
         in state { spcWorkersIdle = idleWorkers, spcWorkersBusy = (workerName, Worker c) : spcWorkersBusy state }
       _ <- io $ forkIO $ do 
           -- Run the job action and track its status
@@ -252,9 +251,6 @@ workerLsiten workerName c = do
           -- message that the job is running
 
           -- After job is done, notify SPC that this worker is idle
-
-
-    -- MsgCancelJob
     -- MsgTerminate
 
 
